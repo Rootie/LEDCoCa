@@ -1,6 +1,7 @@
 import argparse
 import os
 import glob
+from itertools import chain
 
 import cv2
 
@@ -11,7 +12,8 @@ def extractImages(root_path, pathIn):
         os.makedirs(pathOut)
 
     vidcap = cv2.VideoCapture(pathIn)
-    for idx in range(150):
+    frame_count = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
+    for idx in chain(range(150), range(frame_count - 150, frame_count)):
         vidcap.set(cv2.CAP_PROP_POS_FRAMES, idx)
         success,image = vidcap.read()
         if not success:
