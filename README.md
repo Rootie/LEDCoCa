@@ -48,21 +48,12 @@ in the script. To indicate the start and end the script will light some LEDs in
 a red, green, blue pattern.
 
 ## 3. Reconstruct points
-Create a project directory. Create a subdirectory `images`. Copy the camera matrix
-file `K.txt` to the `images` directory. Copy the videos from step 2 to the `images`
-directory.
-
-Your direcotry structure should now look like:
-
-- Project_root
-  - images
-    - K.txt
-    - video1.mp4
-    - video2.mp4
+Copy the camera matrix file `K.txt` to the root directory wich contains the
+videos.
 
 Finally you can run the actual reconstruction.
 
-`python main.py --led_count 100 --root_dir /path/to/Project_root/`
+`python main.py --led_count 100 --root_dir /path/to/video_files/`
 
 You may also set the video file extension if it is not *mp4* with `--video_format mpg`.
 

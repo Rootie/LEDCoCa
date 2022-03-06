@@ -27,7 +27,7 @@ def run(args):
     for i in range(args.led_count):
         print(f"LED {i:>3}: {led_in_view_count[i][0]:>3}, {led_match_count[i][0]:>3}")
 
-    K = np.loadtxt(os.path.join(args.root_dir, 'images', 'K.txt'))
+    K = np.loadtxt(os.path.join(args.root_dir, 'K.txt'))
     sfm = SFM(views, matches, K)
     sfm.reconstruct()
 

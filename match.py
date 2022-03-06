@@ -11,9 +11,7 @@ class Match:
         self.indices1 = []  # indices of the matched keypoints in the first view
         self.indices2 = []  # indices of the matched keypoints in the second view
         self.distances = []  # distance between the matched keypoints in the first view
-        self.image_name1 = view1.name  # name of the first view
-        self.image_name2 = view2.name  # name of the second view
-        self.root_path = view1.root_path  # root directory containing the image folder
+        self.root_path = view1.root_path  # root directory containing the videos
         self.inliers1 = []  # list to store the indices of the keypoints from the first view not removed using the fundamental matrix
         self.inliers2 = []  # list to store the indices of the keypoints from the second view not removed using the fundamental matrix
         self.view1 = view1
@@ -38,7 +36,7 @@ class Match:
             except:
               pass
 
-        logging.info("Computed matches between view %s and view %s", self.image_name1, self.image_name2)
+        logging.info("Computed matches between view %s and view %s", self.view1.name, self.view2.name)
 
         self.write_matches()
 
@@ -53,7 +51,7 @@ class Match:
             temp = (self.distances[i], self.indices1[i], self.indices2[i])
             temp_array.append(temp)
 
-        matches_file = open(os.path.join(self.root_path, 'matches', self.image_name1 + '_' + self.image_name2 + '.pkl'), 'wb')
+        matches_file = open(os.path.join(self.root_path, 'matches', self.view1.name + '_' + self.view2.name + '.pkl'), 'wb')
         pickle.dump(temp_array, matches_file)
         matches_file.close()
 
@@ -63,11 +61,11 @@ class Match:
         try:
             matches = pickle.load(
                 open(
-                    os.path.join(self.root_path, 'matches', self.image_name1 + '_' + self.image_name2 + '.pkl'),
+                    os.path.join(self.root_path, 'matches', self.view1.name + '_' + self.view2.name + '.pkl'),
                     "rb"
                 )
             )
-            logging.info("Read matches from file for view pair pair %s %s", self.image_name1, self.image_name2)
+            logging.info("Read matches from file for view pair pair %s %s", self.view1.name, self.view2.name)
 
             for point in matches:
                 self.distances.append(point[0])
@@ -75,19 +73,18 @@ class Match:
                 self.indices2.append(point[2])
 
         except FileNotFoundError:
-            logging.error("Pkl file not found for match %s_%s. Computing from scratch", self.image_name1, self.image_name2)
+            logging.error("Pkl file not found for match %s_%s. Computing from scratch", self.view1.name, self.view2.name)
             self.get_matches(self.view1, self.view2)
 
 
 def create_matches(views):
     """Computes matches between every possible pair of views and stores in a dictionary"""
 
-    match_path = False
+    
 
     root_path = views[0].root_path
 
-    if os.path.exists(os.path.join(root_path, 'matches')):
-        match_path = True
+    match_path = os.path.exists(os.path.join(root_path, 'matches'))
 
     matches = {}
     for i in range(0, len(views) - 1):

@@ -18,7 +18,7 @@ class SFM:
 
         self.views = views  # list of views
         self.matches = matches  # dictionary of matches
-        self.names = []  # image names
+        self.names = []  # view names
         self.done = []  # list of views that have been reconstructed
         self.K = K  # intrinsic matrix
         self.points_3D = np.zeros((views[0].led_count, 3))  # reconstructed 3D points
@@ -43,14 +43,14 @@ class SFM:
 
         return self.names.index(view.name)
 
-    def remove_mapped_points(self, match_object, image_idx):
+    def remove_mapped_points(self, match_object, view_idx):
         """Removes points that have already been reconstructed in the completed views"""
 
         inliers1 = []
         inliers2 = []
 
         for i in range(len(match_object.inliers1)):
-            if (image_idx, match_object.inliers1[i]) not in self.point_map:
+            if (view_idx, match_object.inliers1[i]) not in self.point_map:
                 inliers1.append(match_object.inliers1[i])
                 inliers2.append(match_object.inliers2[i])
 
@@ -144,11 +144,11 @@ class SFM:
 
         # collects all the descriptors of the reconstructed views
         for old_view in self.done:
-            imgIdx = self.get_index_of_view(old_view)
+            viewIdx = self.get_index_of_view(old_view)
             for descriptor in old_view.descriptors:
                 try:
                     match = []
-                    match.append(imgIdx)
+                    match.append(viewIdx)
                     match.append(view.descriptors.index(descriptor))
                     match.append(old_view.descriptors.index(descriptor))
                     matches.append(match)
@@ -160,16 +160,16 @@ class SFM:
 
         # build corresponding array of 2D points and 3D points
         for match in matches:
-            old_image_idx, new_image_kp_idx, old_image_kp_idx = match[0], match[1], match[2]
+            old_view_idx, new_view_kp_idx, old_view_kp_idx = match[0], match[1], match[2]
 
-            if (old_image_idx, old_image_kp_idx) in self.point_map:
+            if (old_view_idx, old_view_kp_idx) in self.point_map:
 
                 # obtain the 2D point from match
-                point_2D = np.array(view.keypoints[new_image_kp_idx].pt).T.reshape((1, 2))
+                point_2D = np.array(view.keypoints[new_view_kp_idx].pt).T.reshape((1, 2))
                 points_2D = np.concatenate((points_2D, point_2D), axis=0)
 
                 # obtain the 3D point from the point_map
-                point_3D = self.points_3D[self.point_map[(old_image_idx, old_image_kp_idx)], :].T.reshape((1, 3))
+                point_3D = self.points_3D[self.point_map[(old_view_idx, old_view_kp_idx)], :].T.reshape((1, 3))
                 points_3D = np.concatenate((points_3D, point_3D), axis=0)
 
         # compute new pose using solvePnPRansac
@@ -304,8 +304,8 @@ class SFM:
         baseline_view1, baseline_view2 = self.views[0], self.views[1]
         logging.info("Computing baseline pose and reconstructing points")
         self.compute_pose(view1=baseline_view1, view2=baseline_view2, is_baseline=True)
-        logging.info("Mean reprojection error for 1 image is %f", self.errors[0])
-        logging.info("Mean reprojection error for 2 images is %f", self.errors[1])
+        logging.info("Mean reprojection error for 1 video is %f", self.errors[0])
+        logging.info("Mean reprojection error for 2 videos is %f", self.errors[1])
         self.plot_points()
         logging.info("Points plotted for %d views", len(self.done))
 
@@ -313,7 +313,7 @@ class SFM:
 
             logging.info("Computing pose and reconstructing points for view %d - %s", i+1, self.views[i].name)
             self.compute_pose(view1=self.views[i])
-            logging.info("Mean reprojection error for %d images is %f", i+1, self.errors[i])
+            logging.info("Mean reprojection error for %d videos is %f", i+1, self.errors[i])
             self.plot_points()
             logging.info("Points plotted for %d views", i+1)
         points_3D_final = self.fix_points()

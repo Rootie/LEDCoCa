@@ -8,16 +8,17 @@ import logging
 
 
 class View:
-    """Represents an image used in the reconstruction"""
+    """Represents an image used in the reconstruction. But the image is not really a single image
+    but a video where each LED is lit one after another."""
 
-    def __init__(self, image_path, root_path, feature_path, led_count):
+    def __init__(self, video_path, root_path, feature_path, led_count):
 
-        self.name = image_path[image_path.rfind('/') + 1:-4]  # image name without extension
-        self.image = cv2.VideoCapture(image_path)
+        self.name = video_path[video_path.rfind('/') + 1:-4]  # video name without extension
+        self.video = cv2.VideoCapture(video_path)
         self.keypoints = []  # list of keypoints obtained from feature extraction
         self.descriptors = []  # list of descriptors obtained from feature extraction, equals the led nr
         self.led_count = led_count
-        self.root_path = root_path  # root directory containing the image folder
+        self.root_path = root_path  # root directory containing the videos
         self.R = np.zeros((3, 3), dtype=float)  # rotation matrix for the view
         self.t = np.zeros((3, 1), dtype=float)  # translation vector for the view
 
@@ -27,8 +28,8 @@ class View:
             self.read_features()
 
     def get_image_tint(self, frame_nr):
-        self.image.set(cv2.CAP_PROP_POS_FRAMES, frame_nr)
-        success,image = self.image.read()
+        self.video.set(cv2.CAP_PROP_POS_FRAMES, frame_nr)
+        success, image = self.video.read()
         if not success:
             raise Exception()
 
@@ -55,7 +56,7 @@ class View:
             FIND_BLUE_END = auto()
         state = States.FIND_RED_BEGINNING
         start_frame = 0
-        end_frame = int(self.image.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+        end_frame = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
 
         red_beginning_frame = None
 
@@ -77,7 +78,7 @@ class View:
                         return offset, fpl
 
     def extract_features(self):
-        """Extracts features from the image"""
+        """Extracts features from the video"""
 
         if not os.path.exists(os.path.join(self.root_path, 'features')):
             os.makedirs(os.path.join(self.root_path, 'features'))
@@ -90,8 +91,8 @@ class View:
         offset += int(lit_frames / 2)
         all_LED_image = None
         for count in range(self.led_count):
-            self.image.set(cv2.CAP_PROP_POS_FRAMES, offset + (count * lit_frames))
-            success,image = self.image.read()
+            self.video.set(cv2.CAP_PROP_POS_FRAMES, offset + (count * lit_frames))
+            success, image = self.video.read()
             if not success:
                 break
 
@@ -140,17 +141,17 @@ class View:
             
         cv2.imwrite(os.path.join(self.root_path, 'features', self.name + '_keypoints.jpg'), all_LED_image)
 
-        logging.info("Computed features for image %s", self.name)
+        logging.info("Computed features for video %s", self.name)
 
         self.write_features()
 
     def read_features(self):
-        """Reads features stored in files. Feature files have filenames corresponding to image names without extensions"""
+        """Reads features stored in files. Feature files have filenames corresponding to video names without extensions"""
 
-        # logic to compute features for images that don't have pkl files
+        # logic to compute features for videos that don't have pkl files
         try:
             features = pickle.load(open(os.path.join(self.root_path, 'features', self.name + '.pkl'), "rb"))
-            logging.info("Read features from file for image %s", self.name)
+            logging.info("Read features from file for video %s", self.name)
 
             keypoints = []
             descriptors = []
@@ -165,7 +166,7 @@ class View:
             self.descriptors = descriptors
 
         except FileNotFoundError:
-            logging.error("Pkl file not found for image %s. Computing from scratch", self.name)
+            logging.error("Pkl file not found for video %s. Computing from scratch", self.name)
             self.extract_features()
 
     def write_features(self):
@@ -186,20 +187,16 @@ class View:
 
 
 def create_views(root_path, video_format, led_count):
-    """Loops through the images and creates an array of views"""
-
-    feature_path = False
+    """Loops through the videos and creates an array of views"""
 
     # if features directory exists, the feature files are read from there
-    logging.info("Created features directory")
-    if os.path.exists(os.path.join(root_path, 'features')):
-        feature_path = True
+    feature_path = os.path.exists(os.path.join(root_path, 'features'))
 
-    image_names = sorted(glob.glob(os.path.join(root_path, 'images', '*.' + video_format)))
+    video_names = sorted(glob.glob(os.path.join(root_path, '*.' + video_format)))
 
     logging.info("Computing features")
     views = []
-    for image_name in image_names:
-        views.append(View(image_name, root_path, feature_path, led_count))
+    for video_name in video_names:
+        views.append(View(video_name, root_path, feature_path, led_count))
 
     return views
