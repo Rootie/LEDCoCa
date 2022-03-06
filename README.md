@@ -52,25 +52,13 @@ Create a project directory. Create a subdirectory `images`. Copy the camera matr
 file `K.txt` to the `images` directory. Copy the videos from step 2 to the `images`
 directory.
 
-Then, for each video, you need to find the **frame offset** when the first LED
-is lit. Also the exact **frame count** each LED is lit is needed. To do this
-you can use the script `util/extract_video_frames.py`. This will extract the
-first 150 frames of each video into the subdirectory `images_scaled` in the
-project directory. Save the data in a textfile named like the video but with
-a `.txt` extension. The **first line** should be the **frame offset**. The second
-line should be the **frame count**. It is recommended the get an avarage over
-multiple LEDs to get an exact value wich may also contain some delays when
-setting the LEDs. 
-
 Your direcotry structure should now look like:
 
 - Project_root
   - images
     - K.txt
     - video1.mp4
-    - video1.txt
     - video2.mp4
-    - video2.txt
 
 Finally you can run the actual reconstruction.
 

@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import os
 import pickle
 import cv2
@@ -15,7 +16,7 @@ class View:
         self.image = cv2.VideoCapture(image_path)
         self.keypoints = []  # list of keypoints obtained from feature extraction
         self.descriptors = []  # list of descriptors obtained from feature extraction, equals the led nr
-        self.led_count = led_count  # feature extraction method
+        self.led_count = led_count
         self.root_path = root_path  # root directory containing the image folder
         self.R = np.zeros((3, 3), dtype=float)  # rotation matrix for the view
         self.t = np.zeros((3, 1), dtype=float)  # translation vector for the view
@@ -25,13 +26,67 @@ class View:
         else:
             self.read_features()
 
+    def get_image_tint(self, frame_nr):
+        self.image.set(cv2.CAP_PROP_POS_FRAMES, frame_nr)
+        success,image = self.image.read()
+        if not success:
+            raise Exception()
+
+        hist_b = cv2.calcHist([image],[0],None,[256],[0,256])
+        b_median = np.median(hist_b)
+        hist_g = cv2.calcHist([image],[1],None,[256],[0,256])
+        g_median = np.median(hist_g)
+        hist_r = cv2.calcHist([image],[2],None,[256],[0,256])
+        r_median = np.median(hist_r)
+
+        if r_median > g_median * 1.24 and r_median > b_median * 1.24:
+            tint = 'r'
+        elif g_median > r_median * 1.24 and g_median > b_median * 1.24:
+            tint = 'g'
+        elif b_median > r_median * 1.24 and b_median > g_median * 1.24:
+            tint = 'b'
+        else:
+            tint = 'g'
+        return tint
+
+    def extract_info_from_video(self):
+        class States(Enum):
+            FIND_RED_BEGINNING = auto()
+            FIND_BLUE_END = auto()
+        state = States.FIND_RED_BEGINNING
+        start_frame = 0
+        end_frame = int(self.image.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+
+        red_beginning_frame = None
+
+        while True:
+            for frame_nr in range(start_frame, end_frame, 1 if start_frame < end_frame else -1):
+                tint = self.get_image_tint(frame_nr)
+                if state is States.FIND_RED_BEGINNING:
+                    if tint == 'r':
+                        red_beginning_frame = frame_nr
+
+                        state = States.FIND_BLUE_END
+                        start_frame = end_frame
+                        end_frame = frame_nr + 1
+                        break
+                elif state is States.FIND_BLUE_END:
+                    if tint == 'b':
+                        fpl = (frame_nr + 1 - red_beginning_frame) / (self.led_count + 7)
+                        offset = red_beginning_frame + 4 * fpl
+                        return offset, fpl
+
     def extract_features(self):
         """Extracts features from the image"""
 
         if not os.path.exists(os.path.join(self.root_path, 'features')):
             os.makedirs(os.path.join(self.root_path, 'features'))
 
-        offset, lit_frames = np.loadtxt(os.path.join(self.root_path, 'images', self.name + '.txt'))
+
+        offset, lit_frames = self.extract_info_from_video()
+        logging.info("First LED offset: %d", offset)
+        logging.info("LEDs are lit for %f frames", lit_frames)
+
         offset += int(lit_frames / 2)
         all_LED_image = None
         for count in range(self.led_count):
